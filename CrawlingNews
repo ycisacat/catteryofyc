@@ -1,4 +1,5 @@
-#coding=utf-8
+__author__ = 'yc'
+#-*-coding:utf-8-*-
 import re,chardet,urllib
 
 class crawlNews:
@@ -14,15 +15,15 @@ class crawlNews:
 
         #抓取本页连接
         #link=r'<li>.*?</a>'
-        pattern1=re.compile('http.*?shtml')
-        l=re.findall(pattern1,text)
-        return l
+        linkPat=re.compile('http.*?shtml')
+        l=re.findall(linkPat,text)
+        return l #链接们
 
 #获取新闻标题作为txt标题#
     def getTitle(self,psg):
         title=r'<title>(.*)</title>'
-        pattern2=re.compile(title)
-        mytitle=re.search(pattern2,psg)
+        titlePat=re.compile(title)
+        mytitle=re.search(titlePat,psg)
         if mytitle:
             return mytitle.group(1).strip()
         else:
@@ -45,37 +46,42 @@ class crawlNews:
     def remove(self,x):
         removeA=re.compile('<a.*?</a>')
         removeExtra=re.compile('<.*?>|</.*?>')
+        removeCPR=re.compile('Cop.*?Reserved')
         x=re.sub(removeA," ",x)
         x=re.sub(removeExtra," ",x)
+        x=re.sub(removeCPR," ",x)
+        x=x.replace("&nbsp;"," ").replace("┊"," ").replace("新浪公司"," ").replace("版权所有"," ")
+        x=x.replace("电话：400-690-0000 欢迎批评指正"," ")
         return x.strip()
 
 #获取新闻内容并写入txt
     def getData(self,psg):
         data=r'<p>(.*?)</p>'
-        pattern3=re.compile(data,re.S)
-        mydata=re.findall(pattern3,psg) #文字,理论上时未经去除标签的正文
+        psgPat=re.compile(data,re.S) #re.S默认多行匹配
+        mydata=re.findall(psgPat,psg) #文字,理论上时未经去除标签的正文
+#        print "mydata",mydata #print结果为同contents
         contents=[]  #这里开始去除工作
         for a in mydata:
             content=self.remove(a)+"\n"
             contents.append(content)
+#            print "contents",contents #print的结果为 ['\xe3\x80\x80\xe3\x80\x80\xe6\x96\xb0\xe6\xb5\']
         for j in contents:
-            i=1
-            print "正在输出第",i,"篇新闻"
-            i+=1
+            print j
             self.file.write(j)
         self.file.close()
         return psg
 
 spider = crawlNews()
 l=spider.getUrl()
-print len(l),l
+print "总共有",len(l),"篇新闻",
 for i in l:   #解码
-    print i
+    num=l.index(i)
+    print "正在输出第",num+1,"篇新闻"
     web=urllib.urlopen(i).read()
     code2=chardet.detect(web) #查询网站的编码方式
     cw=code2['encoding'] #直接print code:{'confidence': 0.99, 'encoding': 'GB2312'}
     web=str(web).decode(cw,'ignore').encode('utf-8')
-    pageCode = web #正式开工段
+    pageCode = web
     title = spider.getTitle(pageCode)
     txtTitle=spider.setTitle(title)
     passage=spider.getData(pageCode)
